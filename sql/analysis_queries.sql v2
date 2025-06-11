@@ -1,0 +1,74 @@
+-- 1. Частка фільмів кожного жанру по роках (genre share per year)
+-- Показує, який жанр домінував у кожному році і як змінювався їхній розподіл.
+
+WITH genre_by_year AS (
+  SELECT year, genre, COUNT(*) AS genre_count
+  FROM imdb_top_movies
+  GROUP BY year, genre
+),
+total_by_year AS (
+  SELECT year, COUNT(*) AS total_count
+  FROM imdb_top_movies
+  GROUP BY year
+)
+SELECT g.year, g.genre, g.genre_count, t.total_count,
+       ROUND(100.0 * g.genre_count / t.total_count, 2) AS genre_share_percent
+FROM genre_by_year g
+JOIN total_by_year t ON g.year = t.year
+ORDER BY g.year, genre_share_percent DESC;
+
+
+-- 2. Ранжування фільмів всередині року за рейтингом (rank by rating within year)
+-- Дозволяє побачити, які фільми були ТОП-1, ТОП-2 і т.д. у своїх роках.
+
+SELECT name, year, rating,
+       RANK() OVER (PARTITION BY year ORDER BY rating DESC) AS rank_in_year
+FROM imdb_top_movies
+ORDER BY year, rank_in_year;
+
+
+-- 3. Режисери, чий середній рейтинг фільмів зростає рік за роком (positive trend in director's ratings)
+-- Аналізуємо тренди успішності режисерів: хто покращує якість з роками.
+-- За основу беремо середній рейтинг по кожному року.
+WITH director_year_avg AS (
+  SELECT directors, year, ROUND(AVG(rating), 2) AS avg_rating
+  FROM imdb_top_movies
+  GROUP BY directors, year
+),
+ranked AS (
+  SELECT *, 
+         LAG(avg_rating) OVER (PARTITION BY directors ORDER BY year) AS prev_avg
+  FROM director_year_avg
+)
+SELECT *
+FROM ranked
+WHERE prev_avg IS NOT NULL AND avg_rating > prev_avg
+ORDER BY directors, year;
+
+
+-- 4. Кумулятивний прибуток по роках (cumulative profit by year)
+-- Дивимось, як нарощувався загальний прибуток фільмів з роками.
+
+SELECT year,
+       SUM(box_office - budget) AS yearly_profit,
+       SUM(SUM(box_office - budget)) OVER (ORDER BY year) AS cumulative_profit
+FROM imdb_top_movies
+WHERE box_office IS NOT NULL AND budget IS NOT NULL
+GROUP BY year
+ORDER BY year;
+
+
+-- 5. Фільми одного року з однаковим рейтингом (rating duplicates within a year)
+-- Виявляє фільми, які мають однаковий рейтинг в один рік — важливо для точного ранжування.
+
+WITH rated_same AS (
+  SELECT year, rating, COUNT(*) AS same_count
+  FROM imdb_top_movies
+  GROUP BY year, rating
+  HAVING COUNT(*) > 1
+)
+SELECT m.name, m.year, m.rating
+FROM imdb_top_movies m
+JOIN rated_same r
+  ON m.year = r.year AND m.rating = r.rating
+ORDER BY year, rating DESC;
