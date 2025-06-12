@@ -18,6 +18,13 @@ JOIN total_by_year t ON g.year = t.year
 ORDER BY g.year, genre_share_percent DESC;
 
 
+
+
+
+
+
+
+
 -- 2. Ранжування фільмів всередині року за рейтингом (rank by rating within year)
 -- Дозволяє побачити, які фільми були ТОП-1, ТОП-2 і т.д. у своїх роках.
 
@@ -25,6 +32,13 @@ SELECT name, year, rating,
        RANK() OVER (PARTITION BY year ORDER BY rating DESC) AS rank_in_year
 FROM imdb_top_movies
 ORDER BY year, rank_in_year;
+
+
+
+
+
+
+
 
 
 -- 3. Режисери, чий середній рейтинг фільмів зростає рік за роком (positive trend in director's ratings)
@@ -46,6 +60,14 @@ WHERE prev_avg IS NOT NULL AND avg_rating > prev_avg
 ORDER BY directors, year;
 
 
+
+
+
+
+
+
+
+
 -- 4. Кумулятивний прибуток по роках (cumulative profit by year)
 -- Дивимось, як нарощувався загальний прибуток фільмів з роками.
 
@@ -56,6 +78,13 @@ FROM imdb_top_movies
 WHERE box_office IS NOT NULL AND budget IS NOT NULL
 GROUP BY year
 ORDER BY year;
+
+
+
+
+
+
+
 
 
 -- 5. Фільми одного року з однаковим рейтингом (rating duplicates within a year)
